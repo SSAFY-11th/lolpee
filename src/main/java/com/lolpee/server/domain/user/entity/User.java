@@ -1,30 +1,23 @@
 package com.lolpee.server.domain.user.entity;
 
+import com.lolpee.server.domain.auth.attribute.OAuth2Attribute;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
-import java.util.Collection;
-import java.util.List;
-
-import static com.lolpee.server.core.constant.AuthConstant.ROLE_PREFIX;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "users",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "unique_users_username", columnNames = {"username"}),
-                @UniqueConstraint(name = "unique_users_email", columnNames = {"email"})
-        }
+    name = "users",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "unique_users_username", columnNames = {"username"}),
+        @UniqueConstraint(name = "unique_users_email", columnNames = {"email"})
+    }
 )
-public class User implements UserDetails {
+@Builder
+@AllArgsConstructor
+public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
@@ -40,7 +33,7 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private AuthType authType;
+    private ProviderType providerType;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -53,28 +46,20 @@ public class User implements UserDetails {
     @ColumnDefault("false")
     private boolean isLocked = false;
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(ROLE_PREFIX + roleType.toString()));
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return false;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return !this.isLocked;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return false;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return this.isEmailVerified && !this.isLocked;
+    /**
+     * OAuth2 요청을 통한 사용자 생성 처리
+     * @param attribute 리소스 서버로부터 받은 사용자 정보
+     * @param provider 인증 요청을 받은 리소스 서버 종류
+     * @return 새롭게 생성된 유저 객체
+     */
+    public static User createUserByOAuth(OAuth2Attribute attribute, ProviderType provider) {
+        return new User.UserBuilder().username(attribute.getId())
+                .password("newPassword")
+                .email(attribute.getEmail())
+                .providerType(provider)
+                .roleType(RoleType.USER)
+                .isEmailVerified(false)
+                .isLocked(false)
+                .build();
     }
 }
