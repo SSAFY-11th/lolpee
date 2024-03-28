@@ -1,6 +1,6 @@
 package com.lolpee.server.domain.user.entity;
 
-public enum AuthType {
+public enum ProviderType {
     LOCAL,
     GITHUB,
     KAKAO,
